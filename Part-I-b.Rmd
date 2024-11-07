@@ -1,0 +1,128 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part I (b)
+
+```{r coursework}
+# Probability density function
+f <- function(x) { return(0.5 * exp(-abs(x))) }
+
+# Metropolis-Hastings algorithm
+MetropolisHastings <- function(N, s, x0) {
+  samples <- c(x0)
+  xi <- x0
+  
+  for (i in 2:N) {
+    xp <- rnorm(1, mean=samples[i-1], sd=s)
+    
+    # Compute acceptance ratio
+    r <- f(xp) / f(samples[i-1])
+    
+    # Generate a random number from uniform distribution
+    u <- runif(1)
+    
+    # Accept or reject the proposal
+    if (log(u) < log(r)) xi <- xp
+    
+    samples <- c(samples, xi)
+  }
+  
+  return(samples)
+}
+
+# Mean of chain j
+Mj <- function(N, xj) {
+  xj <- unlist(xj)
+  jMean <- 0.0
+  for (i in 1:N) { jMean <- jMean + xj[i] }
+  return(jMean / N)
+}
+
+# Variance of chain j
+Vj <- function(N, xj, mj) {
+  xj <- unlist(xj)
+  jVar <- 0.0
+  for (i in 1:N) { jVar <- jVar + (xj[i] - mj)^2 }
+  return(jVar / N)
+}
+
+# Variance of all
+W <- function(J, vj) {
+  ovrVar <- 0.0
+  for (i in 1:J) { ovrVar <- ovrVar + vj[i] }
+  return(ovrVar / J)
+}
+
+# Mean of all
+M <- function(J, mj) {
+  ovrMean <- 0.0
+  for (i in 1:J) { ovrMean <- ovrMean + mj[i] }
+  return(ovrMean / J)
+}
+
+# Variance between samples
+B <- function(J, M, mj) {
+  betVar <- 0.0
+  for (i in 1:J) { betVar <- betVar + (mj[i] - M)^2 }
+  return(betVar)
+}
+
+# R value
+RVal <- function(Bs, Ws) {
+  return(sqrt((Bs + Ws) / Ws))
+}
+
+# Convergence
+ConvergenceTest <- function(chains) {
+  meanOfChains <- vector("numeric", length = length(chains))
+  varOfChains <- vector("numeric", length = length(chains))
+  sampleVar <- 0.0
+  sampleMean <- 0.0
+  betSampleVar <- 0.0
+  
+  for (i in 1:length(chains)) {
+    meanOfChains[i] <- Mj(N, chains[[i]])
+    varOfChains[i] <- Vj(N, chains[[i]], meanOfChains[i])
+  }
+  
+  sampleVar <- W(length(chains), varOfChains)
+  sampleMean <- M(length(chains), meanOfChains)
+  betSampleVar <- B(length(chains), sampleMean, meanOfChains)
+  R <- RVal(betSampleVar, sampleVar)
+  
+  return(list(R, sampleMean, sampleVar, betSampleVar))
+}
+
+# Parameters
+J <- 4
+N <- 2000
+s <- 0.001
+x0 <- 0.5
+
+chains <- list()
+for (i in 1:J) { chains[[i]] <- MetropolisHastings(N, s, x0) }
+returns <- ConvergenceTest(chains)
+cat("Outputs for N=2000, J=4, and s=0.001:\n")
+cat("M value:", returns[[2]], "\n")
+cat("W value:", returns[[3]], "\n")
+cat("B value:", returns[[4]], "\n")
+cat("R value:", returns[[1]], "\n")
+
+s <- seq(0.001, 1, length.out = 100)
+rvalues <- numeric(length(s))
+
+for (i in 1:length(s)) {
+  chains <- list()
+  for (j in 1:J) { chains[[j]] <- MetropolisHastings(N, s[i], x0) }
+  returns <- ConvergenceTest(chains)
+  rvalues[i] <- returns[[1]]
+}
+
+rd <- data.frame(x=s, y=rvalues)
+rfit <- lm(y~poly(x,4,raw=TRUE), data=rd)
+
+plot(s, rvalues, type='o', col='red', xlab='Standard Deviation', ylab='R Value', main='Standard Deviation and R Value Plot')
+lines(s, predict(rfit, data.frame(x=s)), col='green')
+
+```

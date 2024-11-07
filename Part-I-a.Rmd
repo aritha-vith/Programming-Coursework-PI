@@ -1,0 +1,63 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part I (a)
+
+```{r coursework}
+library(ggplot2)
+
+# Probability density function
+f <- function(x) { return(0.5 * exp(-abs(x))) }
+
+# Metropolis-Hastings algorithm
+MetropolisHastings <- function(N, s, x0) {
+  samples <- c(x0)
+  xi <- x0
+  
+  for (i in 2:N) {
+    xp <- rnorm(1, mean=samples[i-1], sd=s)
+    
+    # Compute acceptance ratio
+    r <- f(xp) / f(samples[i-1])
+    
+    # Generate a random number from uniform distribution
+    u <- runif(1)
+    
+    # Accept or reject the proposal
+    if (log(u) < log(r)) xi <- xp
+    
+    samples <- c(samples, xi)
+  }
+  
+  return(samples)
+}
+
+# Parameters
+N <- 10000
+s <- 1
+x0 <- 0
+
+# Generate samples
+samples <- MetropolisHastings(N, s, x0)
+
+# Compute sample mean and standard deviation
+sampleMean <- mean(samples)
+sampleStd <- sd(samples)
+
+# Plot histogram and kernel density plot
+ggplot(data.frame(x = samples), aes(x = x)) +
+  geom_histogram(bins = 100, aes(y = ..density..), alpha = 0.3, color = 'blue', fill = 'blue') +
+  stat_function(fun = f, color = 'red', size = 1) +
+  geom_density(color = 'green', size = 1) +
+  labs(title = 'Histogram and Kernel Density Plot', x = 'x', y = 'Density') +
+  theme_minimal() +
+  theme(legend.position = 'top') +
+  scale_color_manual(values = c('red', 'green')) +
+  scale_fill_manual(values = c('blue')) +
+  guides(color = FALSE, fill = FALSE)
+
+# Print sample mean and standard deviation
+print(paste("Sample Mean:", sampleMean))
+print(paste("Sample Standard Deviation:", sampleStd, "\n"))
+```
